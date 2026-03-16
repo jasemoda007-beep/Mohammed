@@ -1,0 +1,9 @@
+Package: com.lancer.plays
+Name: LancerPlays
+Depends: firmware (>= 5.0), mobilesubstrate
+Version: 3.7.1
+Architecture: iphoneos-arm
+Description: LancerPlays PUBG All Version Hack
+Maintainer: LancerPlays
+Author: @Sandipan_1508
+Section: Tweaks
