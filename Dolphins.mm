@@ -123,32 +123,34 @@ template<typename T> T Read(long address) {
     return data;
 }
 
-// --- دالة جلب اسم الكلاس من الذاكرة (بدون SDK) ---
-string getClassName(int id) {
+// --- دالة جلب اسم الكلاس من الذاكرة (تم تعديل النوع ليطابق الهيدر) ---
+char* getClassName(int id) {
     uintptr_t gname = staticData.gnameAddr;
-    if (!IsValidAddress(gname)) return "None";
+    if (!IsValidAddress(gname)) return (char*)"None";
 
     uintptr_t chunk = Read<uintptr_t>(gname + (id / 16384) * 8);
     uintptr_t entry = Read<uintptr_t>(chunk + (id % 16384) * 8);
     
-    char name[64];
+    static char name[64]; // static لضمان بقاء النص
+    memset(name, 0, 64);
     memoryTools.readMemory(entry + 16, 64, name); 
-    return string(name);
+    return name;
 }
 
-// --- دالة جلب اسم اللاعب (بدون SDK) ---
-string getPlayerName(long addr) {
-    if (!IsValidAddress(addr)) return "Player";
+// --- دالة جلب اسم اللاعب (تم تعديل النوع ليطابق الهيدر) ---
+char* getPlayerName(long addr) {
+    if (!IsValidAddress(addr)) return (char*)"Player";
     
     uintptr_t namePtr = Read<uintptr_t>(addr);
     int nameLen = Read<int>(addr + 8);
     
+    static char buffer[100];
+    memset(buffer, 0, 100);
     if (nameLen > 0 && nameLen < 100) {
-        char buffer[100];
         memoryTools.readMemory(namePtr, nameLen * 2, buffer); 
-        return string(buffer);
+        return buffer;
     }
-    return "Enemy";
+    return (char*)"Enemy";
 }
 
 // فك تشفير مصفوفة اللاعبين (النسخة الكاملة غير المقتطعة)
@@ -257,9 +259,9 @@ void *readStaticData(void *) {
                 if (!IsValidAddress(objectAddr)) continue;
                 
                 uintptr_t coordAddr = memoryTools.readPtr(objectAddr + Offsets::CoordOffset);
-                string className = getClassName(memoryTools.readInt(objectAddr + 0x18)); 
+                char* className = getClassName(memoryTools.readInt(objectAddr + 0x18)); 
                 
-                if (strstr(className.c_str(), "PlayerPawn") || strstr(className.c_str(), "Character")) {
+                if (strstr(className, "PlayerPawn") || strstr(className, "Character")) {
                     int team = memoryTools.readInt(objectAddr + Offsets::TeamOffset);
                     int myTeam = memoryTools.readInt(staticData.selfAddr + Offsets::TeamOffset);
                     if (team == myTeam) continue;
