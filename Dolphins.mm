@@ -75,7 +75,7 @@ struct Encryption_Chunk {
     uint32_t val_5, val_6, val_7, val_8;
 };
 
-// هياكل البيانات العامة
+// هياكل البيانات العامة (تم تقديمها هنا لكي تكتشفها الدوال أدناه)
 struct {
     uintptr_t libAddr = 0;
     uintptr_t gwlordAddr;
@@ -123,7 +123,7 @@ template<typename T> T Read(long address) {
     return data;
 }
 
-// --- دالة جلب اسم الكلاس من الذاكرة (تم تعديل النوع ليطابق الهيدر) ---
+// --- دالة جلب اسم الكلاس (تم تغيير النوع إلى char* ليطابق dolphins.h) ---
 char* getClassName(int id) {
     uintptr_t gname = staticData.gnameAddr;
     if (!IsValidAddress(gname)) return (char*)"None";
@@ -131,14 +131,14 @@ char* getClassName(int id) {
     uintptr_t chunk = Read<uintptr_t>(gname + (id / 16384) * 8);
     uintptr_t entry = Read<uintptr_t>(chunk + (id % 16384) * 8);
     
-    static char name[64]; // static لضمان بقاء النص
+    static char name[64]; 
     memset(name, 0, 64);
     memoryTools.readMemory(entry + 16, 64, name); 
     return name;
 }
 
-// --- دالة جلب اسم اللاعب (تم تعديل النوع ليطابق الهيدر) ---
-char* getPlayerName(long addr) {
+// --- دالة جلب اسم اللاعب (تم تغيير النوع إلى unsigned long ليطابق طلب الـ Linker) ---
+char* getPlayerName(unsigned long addr) {
     if (!IsValidAddress(addr)) return (char*)"Player";
     
     uintptr_t namePtr = Read<uintptr_t>(addr);
