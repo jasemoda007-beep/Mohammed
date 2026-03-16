@@ -60,10 +60,32 @@ void (*AddControllerRollInput)(void *actot, float val);
 void (*AddControllerPitchInput)(void *actot, float val);
 
 // ==========================================
-// 🔵 أدوات الذاكرة الأساسية
+// 🔵 أدوات الذاكرة الأساسية والهياكل
 // ==========================================
 static long gWorldaddr, gWorldData;
 static long gNameaddr, gNameData;
+
+// هياكل التشفير المطلوبة لعمل الدامب
+struct ActorsEncryption {
+    uint64_t Enc_1, Enc_2;
+    uint64_t Enc_3, Enc_4;
+};
+struct Encryption_Chunk {
+    uint32_t val_1, val_2, val_3, val_4;
+    uint32_t val_5, val_6, val_7, val_8;
+};
+
+// هياكل البيانات العامة
+struct {
+    uintptr_t libAddr = 0;
+    uintptr_t gwlordAddr;
+    uintptr_t gnameAddr;
+    uintptr_t playerController;
+    uintptr_t cameraManager;
+    uintptr_t selfAddr;
+    vector<StaticPlayerData> playerDataList;
+    vector<StaticMaterialData> materialDataList;
+} staticData;
 
 static long gWorld(){
     NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
@@ -101,19 +123,16 @@ template<typename T> T Read(long address) {
     return data;
 }
 
-
-
 // --- دالة جلب اسم الكلاس من الذاكرة (بدون SDK) ---
 string getClassName(int id) {
     uintptr_t gname = staticData.gnameAddr;
     if (!IsValidAddress(gname)) return "None";
 
-    // منطق جلب الاسم من GNames (PUBG Mobile)
     uintptr_t chunk = Read<uintptr_t>(gname + (id / 16384) * 8);
     uintptr_t entry = Read<uintptr_t>(chunk + (id % 16384) * 8);
     
     char name[64];
-    memoryTools.readMemory(entry + 16, 64, name); // الأوفست 16 هو بداية النص في GNameEntry
+    memoryTools.readMemory(entry + 16, 64, name); 
     return string(name);
 }
 
@@ -121,52 +140,77 @@ string getClassName(int id) {
 string getPlayerName(long addr) {
     if (!IsValidAddress(addr)) return "Player";
     
-    // قراءة الـ FString الخاص بالاسم
     uintptr_t namePtr = Read<uintptr_t>(addr);
     int nameLen = Read<int>(addr + 8);
     
     if (nameLen > 0 && nameLen < 100) {
         char buffer[100];
-        memoryTools.readMemory(namePtr, nameLen * 2, buffer); // UTF-16
-        // تحويل بسيط للنص أو إرجاعه كـ string
+        memoryTools.readMemory(namePtr, nameLen * 2, buffer); 
         return string(buffer);
     }
     return "Enemy";
 }
 
-
-
-
-
-
-
-
-// فك تشفير مصفوفة اللاعبين
-uint64_t DecryptActorsArray(uint64_t uLevel, int Actors_Offset, int EncryptedActors_Offset) {
-    if (uLevel < 0x10000000) return 0;
-    if (Read<uint64_t>(uLevel + Actors_Offset) > 0) return uLevel + Actors_Offset;
-    if (Read<uint64_t>(uLevel + EncryptedActors_Offset) > 0) return uLevel + EncryptedActors_Offset;
-    // ... (باقي كود التشفير الأصلي كما هو لتوفير المساحة، افترض وجوده هنا)
+// فك تشفير مصفوفة اللاعبين (النسخة الكاملة غير المقتطعة)
+uint64_t DecryptActorsArray(uint64_t uLevel, int Actors_Offset, int EncryptedActors_Offset)
+{
+    if (uLevel < 0x10000000)
+        return 0;
+ 
+    if (Read<uint64_t>(uLevel + Actors_Offset) > 0)
+        return uLevel + Actors_Offset;
+ 
+    if (Read<uint64_t>(uLevel + EncryptedActors_Offset) > 0)
+        return uLevel + EncryptedActors_Offset;
+ 
+    auto Encryption = Read<ActorsEncryption>(uLevel + EncryptedActors_Offset + 0x10);
+ 
+    if (Encryption.Enc_1 > 0)
+    {
+        auto Enc = Read<Encryption_Chunk>(Encryption.Enc_1 + 0x80);
+        return (((Read<uint8_t>(Encryption.Enc_1 + Enc.val_1)
+            | (Read<uint8_t>(Encryption.Enc_1 + Enc.val_2) << 8))
+            | (Read<uint8_t>(Encryption.Enc_1 + Enc.val_3) << 0x10)) & 0xFFFFFF
+            | ((uint64_t)Read<uint8_t>(Encryption.Enc_1 + Enc.val_4) << 0x18)
+            | ((uint64_t)Read<uint8_t>(Encryption.Enc_1 + Enc.val_5) << 0x20)) & 0xFFFF00FFFFFFFFFF
+            | ((uint64_t)Read<uint8_t>(Encryption.Enc_1 + Enc.val_6) << 0x28)
+            | ((uint64_t)Read<uint8_t>(Encryption.Enc_1 + Enc.val_7) << 0x30)
+            | ((uint64_t)Read<uint8_t>(Encryption.Enc_1 + Enc.val_8) << 0x38);
+    }
+    else if (Encryption.Enc_2 > 0)
+    {
+        auto Encrypted_Actors = Read<uint64_t>(Encryption.Enc_2);
+        if (Encrypted_Actors > 0)
+        {
+            return (uint16_t)(Encrypted_Actors - 0x400) & 0xFF00
+                | (uint8_t)(Encrypted_Actors - 0x04)
+                | (Encrypted_Actors + 0xFC0000) & 0xFF0000
+                | (Encrypted_Actors - 0x4000000) & 0xFF000000
+                | (Encrypted_Actors + 0xFC00000000) & 0xFF00000000
+                | (Encrypted_Actors + 0xFC0000000000) & 0xFF0000000000
+                | (Encrypted_Actors + 0xFC000000000000) & 0xFF000000000000
+                | (Encrypted_Actors - 0x400000000000000) & 0xFF00000000000000;
+        }
+    }
+    else if (Encryption.Enc_3 > 0)
+    {
+        auto Encrypted_Actors = Read<uint64_t>(Encryption.Enc_3);
+        if (Encrypted_Actors > 0)
+            return (Encrypted_Actors >> 0x38) | (Encrypted_Actors << (64 - 0x38));
+    }
+    else if (Encryption.Enc_4 > 0)
+    {
+        auto Encrypted_Actors = Read<uint64_t>(Encryption.Enc_4);
+        if (Encrypted_Actors > 0)
+            return Encrypted_Actors ^ 0xCDCD00;
+    }
     return 0;
 }
-
-// هياكل البيانات العامة
-struct {
-    uintptr_t libAddr = 0;
-    uintptr_t gwlordAddr;
-    uintptr_t gnameAddr;
-    uintptr_t playerController;
-    uintptr_t cameraManager;
-    uintptr_t selfAddr;
-    vector<StaticPlayerData> playerDataList;
-    vector<StaticMaterialData> materialDataList;
-} staticData;
 
 // ==========================================
 // 🟡 دالة تشغيل الهاك وتأخير الـ ImGui
 // ==========================================
 static void didFinishLaunching(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef info) {
-    // تأخير 5 ثواني لمنع الكراش بالشاشة السوداء
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         mao* drawWindow = [[mao alloc] initWithFrame:&moduleControl];
         mi* menuWindow = [[mi alloc] initWithFrame:&moduleControl];
@@ -190,7 +234,7 @@ __attribute__((constructor)) static void initialize() {
 // ==========================================
 void *readStaticData(void *) {
     while (true) {
-        sleep(1); // تم تقليل الوقت لسرعة الرادار
+        sleep(1); 
         if(moduleControl.systemStatus != TransmissionNormal){
             staticData.libAddr = (uintptr_t)_dyld_get_image_vmaddr_slide(0);
             if(staticData.libAddr != 0) moduleControl.systemStatus = TransmissionNormal;
@@ -198,14 +242,13 @@ void *readStaticData(void *) {
             staticData.gwlordAddr = gWorld();
             staticData.gnameAddr = gName();
             
-            // قراءة المؤشرات باستخدام الأوفستات المباشرة
             staticData.playerController = memoryTools.readPtr(memoryTools.readPtr(memoryTools.readPtr(staticData.gwlordAddr + 0x38) + 0x78) + 0x30);
             staticData.selfAddr = memoryTools.readPtr(staticData.playerController + Offsets::SelfOffset);
             staticData.cameraManager = memoryTools.readPtr(staticData.playerController + Offsets::CameraManagerOffset);
             
             vector<StaticPlayerData> tmpPlayerDataList;
             uintptr_t uLevel = memoryTools.readPtr(staticData.gwlordAddr + 0x30);
-            auto Actors = DecryptActorsArray(uLevel, 0xA0, 0x488); // افتراضي
+            auto Actors = DecryptActorsArray(uLevel, 0xA0, 0x488); 
             auto obectArray = Read<uint64_t>(Actors);
             auto objectCount = Read<int>(Actors + 0x8);
             
@@ -214,7 +257,7 @@ void *readStaticData(void *) {
                 if (!IsValidAddress(objectAddr)) continue;
                 
                 uintptr_t coordAddr = memoryTools.readPtr(objectAddr + Offsets::CoordOffset);
-                string className = getClassName(memoryTools.readInt(objectAddr + 0x18)); // ClassID
+                string className = getClassName(memoryTools.readInt(objectAddr + 0x18)); 
                 
                 if (strstr(className.c_str(), "PlayerPawn") || strstr(className.c_str(), "Character")) {
                     int team = memoryTools.readInt(objectAddr + Offsets::TeamOffset);
@@ -248,9 +291,8 @@ void readFrameData(ImVec2 screenSize, vector<PlayerData> &playerDataList, vector
     materialDataList.clear();
     
     if (moduleControl.systemStatus == TransmissionNormal) {
-        // قراءة موقع الكاميرا مباشرة من الذاكرة (بدون MinimalViewInfo Struct مال SDK)
         uintptr_t povAddr = staticData.cameraManager + Offsets::PovOffset + 0x10; 
-        ImVec3 selfCoord = Read<ImVec3>(povAddr + 0x0); // Location
+        ImVec3 selfCoord = Read<ImVec3>(povAddr + 0x0); 
         
         float lateralAngleView = memoryTools.readFloat(staticData.playerController + Offsets::MouseOffset + 0x4) - 90;
         
@@ -269,18 +311,17 @@ void readFrameData(ImVec2 screenSize, vector<PlayerData> &playerDataList, vector
                 playerData.team = staticPlayerData.team;
                 playerData.hp = memoryTools.readFloat(staticPlayerData.addr + Offsets::HpOffset);
                 
-                // قراءة الحالة كقيمة (وليس مؤشر)
                 uint64_t statusVal = Read<uint64_t>(staticPlayerData.addr + Offsets::StatusOffset);
                 
-                if (statusVal == 2097168) playerData.statusName = "开车"; // يسوق
-                else if (statusVal == 262208) playerData.statusName = "打药"; // يعالج
-                else if (statusVal == 524288) playerData.statusName = "击倒"; // نوك
-                else if (statusVal == 8205 || statusVal == 1073741840) playerData.statusName = "开火"; // يرمي
-                else if (statusVal == 32784) playerData.statusName = "挥拳"; // بوكسات
-                else playerData.statusName = "未知"; // غير معروف
+                if (statusVal == 2097168) playerData.statusName = "开车"; 
+                else if (statusVal == 262208) playerData.statusName = "打药"; 
+                else if (statusVal == 524288) playerData.statusName = "击倒"; 
+                else if (statusVal == 8205 || statusVal == 1073741840) playerData.statusName = "开火"; 
+                else if (statusVal == 32784) playerData.statusName = "挥拳"; 
+                else playerData.statusName = "未知"; 
                 
                 playerDataList.push_back(playerData);
             }
         }
     }
-} // نهاية الدالة والأقواس مضبوطة 100%
+}
