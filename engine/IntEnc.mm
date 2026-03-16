@@ -3,7 +3,7 @@
 //
 // Created by Saudgl on 3/22/23.
 // Updated 15/7/2023
-#import "../SDK.hpp"
+
 #import "JHCJDrawView.h"
 //#import "ITSVIEW.h"
 #import <CoreText/CoreText.h>
@@ -19,7 +19,7 @@
 #import <Foundation/Foundation.h>
 #import <mach/mach_traps.h>
 #include <math.h>
-#import "../SDK.hpp"
+
 #import <array>
 #include "Tools.h"
 #include <cstdint>
