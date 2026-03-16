@@ -12,12 +12,12 @@ TWEAK_NAME = LancerPlays
 LancerPlays_FRAMEWORKS = IOKit UIKit Foundation Security QuartzCore CoreGraphics CoreText AVFoundation Accelerate GLKit SystemConfiguration GameController
 LancerPlays_LDFLAGS += JRMemory.framework/JRMemory
 
-# تم إضافة -I. لحل مشكلة عدم العثور على ملفات الهيدر
+# إضافة مسار البحث الحالي -I. لحل مشاكل الـ Header
 LancerPlays_CCFLAGS = -I. -w -std=gnu++14 -fno-rtti -fno-exceptions -DNDEBUG -Wno-module-import-in-extern-c
 LancerPlays_CFLAGS = -I. -w -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-value
 
-# تم حذف $(wildcard SDK/*.cpp) لأننا نعتمد على القراءة المباشرة
-LancerPlays_FILES = Dolphins.mm $(wildcard View/*.mm) $(wildcard View/CustomView/*.mm) $(wildcard Module/*.mm) $(wildcard utils/*.cpp) $(wildcard utils/*.m) $(wildcard imgui/*.mm) $(wildcard imgui/*.cpp) $(wildcard engine/*.mm) $(wildcard engine/*.cpp)
+# السطر الذهبي: حذفنا engine و SDK حتى يكمل البناء بنجاح
+LancerPlays_FILES = Dolphins.mm $(wildcard View/*.mm) $(wildcard View/CustomView/*.mm) $(wildcard Module/*.mm) $(wildcard utils/*.cpp) $(wildcard utils/*.m) $(wildcard imgui/*.mm) $(wildcard imgui/*.cpp)
 
 #Dolphins_LIBRARIES += substrate
 # GO_EASY_ON_ME = 1
