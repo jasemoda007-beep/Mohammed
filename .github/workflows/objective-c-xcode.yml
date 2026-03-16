@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch: # هذا السطر يخليك تكدر تشغل البناء يدوياً بأي وقت
+  workflow_dispatch:
 
 jobs:
   build:
@@ -34,6 +34,11 @@ jobs:
     - name: Install ldid
       run: brew install ldid
 
+    - name: Unzip SDK
+      run: |
+        unzip -o SDK/sdk.zip -d SDK/
+        mv SDK/SDK/* SDK/ 2>/dev/null || true
+
     - name: Build Tweak (Make Package)
       run: |
         make package FINALPACKAGE=1
@@ -41,5 +46,6 @@ jobs:
     - name: Upload Compiled Tweak
       uses: actions/upload-artifact@v4
       with:
-        name: Dolphins-ImGui-Tweak
+        name: LancerPlays-Tweak
         path: packages/*.deb
+        
