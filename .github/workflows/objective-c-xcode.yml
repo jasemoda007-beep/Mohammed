@@ -1,4 +1,4 @@
-name: Build Dolphins ImGui Tweak
+name: Build LancerPlays Tweak
 
 on:
   push:
@@ -33,11 +33,6 @@ jobs:
 
     - name: Install ldid
       run: brew install ldid
-
-    - name: Unzip SDK
-      run: |
-        unzip -o SDK/sdk.zip -d SDK/
-        mv SDK/SDK/* SDK/ 2>/dev/null || true
 
     - name: Build Tweak (Make Package)
       run: |
