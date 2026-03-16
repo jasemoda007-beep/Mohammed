@@ -1,21 +1,20 @@
-export THEOS=/Users/sandipan/theos
-
 ARCHS = arm64
 #Add arm64e if it needed
 DEBUG = 0
 FINALPACKAGE = 1
 FOR_RELEASE = 1
 THEOS_PACKAGE_SCHEME = rootless
+
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = LancerPlays
 
-LancerPlays_FRAMEWORKS = IOKit  UIKit Foundation Security QuartzCore CoreGraphics CoreText  AVFoundation Accelerate GLKit SystemConfiguration GameController
+LancerPlays_FRAMEWORKS = IOKit UIKit Foundation Security QuartzCore CoreGraphics CoreText AVFoundation Accelerate GLKit SystemConfiguration GameController
 LancerPlays_LDFLAGS += JRMemory.framework/JRMemory
 LancerPlays_CCFLAGS = -w -std=gnu++14 -fno-rtti -fno-exceptions -DNDEBUG -Wno-module-import-in-extern-c
 LancerPlays_CFLAGS = -w -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-value
 
-LancerPlays_FILES = Dolphins.mm $(wildcard View/*.mm) $(wildcard View/CustomView/*.mm) $(wildcard Module/*.mm) $(wildcard utils/*.cpp) $(wildcard utils/*.m) $(wildcard imgui/*.mm) $(wildcard imgui/*.cpp)  $(wildcard engine/*.mm) $(wildcard engine/*.cpp)  $(wildcard SDK/*.cpp)
+LancerPlays_FILES = Dolphins.mm $(wildcard View/*.mm) $(wildcard View/CustomView/*.mm) $(wildcard Module/*.mm) $(wildcard utils/*.cpp) $(wildcard utils/*.m) $(wildcard imgui/*.mm) $(wildcard imgui/*.cpp) $(wildcard engine/*.mm) $(wildcard engine/*.cpp) $(wildcard SDK/*.cpp)
 
 #Dolphins_LIBRARIES += substrate
 # GO_EASY_ON_ME = 1
