@@ -101,6 +101,46 @@ template<typename T> T Read(long address) {
     return data;
 }
 
+
+
+// --- دالة جلب اسم الكلاس من الذاكرة (بدون SDK) ---
+string getClassName(int id) {
+    uintptr_t gname = staticData.gnameAddr;
+    if (!IsValidAddress(gname)) return "None";
+
+    // منطق جلب الاسم من GNames (PUBG Mobile)
+    uintptr_t chunk = Read<uintptr_t>(gname + (id / 16384) * 8);
+    uintptr_t entry = Read<uintptr_t>(chunk + (id % 16384) * 8);
+    
+    char name[64];
+    memoryTools.readMemory(entry + 16, 64, name); // الأوفست 16 هو بداية النص في GNameEntry
+    return string(name);
+}
+
+// --- دالة جلب اسم اللاعب (بدون SDK) ---
+string getPlayerName(long addr) {
+    if (!IsValidAddress(addr)) return "Player";
+    
+    // قراءة الـ FString الخاص بالاسم
+    uintptr_t namePtr = Read<uintptr_t>(addr);
+    int nameLen = Read<int>(addr + 8);
+    
+    if (nameLen > 0 && nameLen < 100) {
+        char buffer[100];
+        memoryTools.readMemory(namePtr, nameLen * 2, buffer); // UTF-16
+        // تحويل بسيط للنص أو إرجاعه كـ string
+        return string(buffer);
+    }
+    return "Enemy";
+}
+
+
+
+
+
+
+
+
 // فك تشفير مصفوفة اللاعبين
 uint64_t DecryptActorsArray(uint64_t uLevel, int Actors_Offset, int EncryptedActors_Offset) {
     if (uLevel < 0x10000000) return 0;
